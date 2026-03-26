@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch Profil-Check: Max & Angela</title>
+    <style>
+        :root {
+            --bg: #f0f4f8;
+            --primary: #3498db;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text: #2c3e50;
+            --max-color: #3498db;
+            --angela-color: #9b59b6;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.5rem; text-align: center; margin-bottom: 5px; }
+        .instruction { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.95rem; }
+
+        /* Aktueller Fakt-Bereich */
+        .fact-container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 30px;
+            border: 2px solid var(--primary);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #current-fact {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Profil-Spalten */
+        .profiles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        @media (max-width: 600px) {
+            .profiles-grid { grid-template-columns: 1fr; }
+        }
+
+        .profile-area {
+            background: #fff;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            border: 3px solid #ddd;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .profile-area:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .profile-area.active-max { border-color: var(--max-color); }
+        .profile-area.active-angela { border-color: var(--angela-color); }
+
+        .avatar { font-size: 4rem; display: block; margin-bottom: 10px; }
+        .name { font-size: 1.6rem; font-weight: bold; margin-bottom: 15px; display: block; }
+
+        /* Listen der gesammelten Fakten */
+        .fact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            min-height: 50px;
+        }
+
+        .fact-tag {
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border-left: 4px solid #ddd;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Feedback Animationen */
+        .shake { animation: shake 0.4s; border-color: var(--error) !important; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-solve { background: var(--success); color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
+
+        #finish-msg {
+            display: none;
+            margin-top: 20px;
+            font-size: 1.5rem;
+            color: var(--success);
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Кто это? (Profil-Check)</h1>
+    <p class="instruction">Tippe auf das richtige Profil, um die Information zuzuordnen.</p>
+
+    <div class="fact-container" id="fact-box">
+        <div id="current-fact">Lade Fakten...</div>
+    </div>
+
+    <div class="profiles-grid">
+        <!-- Profil MAX -->
+        <div class="profile-area active-max" onclick="checkAssignment('max')">
+            <span class="avatar">🧔</span>
+            <span class="name">Макс</span>
+            <div class="fact-list" id="list-max"></div>
+        </div>
+
+        <!-- Profil ANGELA -->
+        <div class="profile-area active-angela" onclick="checkAssignment('angela')">
+            <span class="avatar">👩</span>
+            <span class="name">Анжела</span>
+            <div class="fact-list" id="list-angela"></div>
+        </div>
+    </div>
+
+    <div id="finish-msg">Молодцы! Вы всё распределили! 🎉</div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="initGame()">Neu starten</button>
+        <button class="btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const facts = [
+            { text: "Двадцать пять лет", target: "max" },
+            { text: "Тридцать один год", target: "angela" },
+            { text: "Работает в магазине", target: "max" },
+            { text: "Учится в университете", target: "angela" },
+            { text: "Хочет стать переводчиком", target: "angela" },
+            { text: "Любит спать", target: "max" },
+            { text: "Любит путешествовать", target: "angela" },
+            { text: "Умный и серьезный", target: "max" },
+            { text: "Позитивная и открытая", target: "angela" },
+            { text: "Продавец", target: "max" }
+        ];
+
+        let currentIdx = 0;
+        let gameActive = true;
+
+        function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+
+        function initGame() {
+            shuffle(facts);
+            currentIdx = 0;
+            gameActive = true;
+            document.getElementById('list-max').innerHTML = '';
+            document.getElementById('list-angela').innerHTML = '';
+            document.getElementById('finish-msg').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'inline-block';
+            document.getElementById('fact-box').style.display = 'flex';
+            loadFact();
+        }
+
+        function loadFact() {
+            if (currentIdx < facts.length) {
+                document.getElementById('current-fact').textContent = facts[currentIdx].text;
+            } else {
+                endGame();
+            }
+        }
+
+        function checkAssignment(choice) {
+            if (!gameActive || currentIdx >= facts.length) return;
+
+            const currentFact = facts[currentIdx];
+            const profileElement = event.currentTarget;
+
+            if (choice === currentFact.target) {
+                // Richtig
+                const list = document.getElementById('list-' + choice);
+                const tag = document.createElement('div');
+                tag.className = 'fact-tag';
+                tag.textContent = currentFact.text;
+                list.appendChild(tag);
+                
+                currentIdx++;
+                loadFact();
+            } else {
+                // Falsch
+                profileElement.classList.add('shake');
+                setTimeout(() => profileElement.classList.remove('shake'), 400);
+            }
+        }
+
+        function showSolution() {
+            while (currentIdx < facts.length) {
+                const f = facts[currentIdx];
+                const list = document.getElementById('list-' + f.target);
+                const tag = document.createElement('div');
+                tag.className = 'fact-tag';
+                tag.textContent = f.text;
+                list.appendChild(tag);
+                currentIdx++;
+            }
+            endGame();
+        }
+
+        function endGame() {
+            gameActive = false;
+            document.getElementById('fact-box').style.display = 'none';
+            document.getElementById('finish-msg').style.display = 'block';
+            document.getElementById('solve-btn').style.display = 'none';
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
