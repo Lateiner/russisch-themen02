@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch Vokabel-Memory</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-back: #2c3e50;
+            --text-color: #2c3e50;
+            --primary: #3498db;
+            /* Farben für die Paare */
+            --c1: #ffadad; --c2: #ffd6a5; --c3: #fdffb6; --c4: #caffbf;
+            --c5: #9bf6ff; --c6: #a0c4ff; --c7: #bdb2ff; --c8: #ffc6ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; text-align: center; }
+        p.desc { color: #666; margin-bottom: 20px; text-align: center; max-width: 500px; }
+
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+            perspective: 1000px;
+        }
+
+        @media (max-width: 500px) {
+            .memory-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        }
+
+        .memory-card {
+            aspect-ratio: 1/1;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .memory-card.flipped { transform: rotateY(180deg); }
+
+        /* Verschwinden-Effekt für im Spiel gefundene Paare */
+        .memory-card.matched-hidden {
+            animation: disappear 0.6s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes disappear {
+            0% { transform: scale(1) rotateY(180deg); opacity: 1; }
+            100% { transform: scale(0) rotateY(180deg); opacity: 0; visibility: hidden; }
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 8px;
+            box-sizing: border-box;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.95rem;
+            overflow-wrap: break-word;
+        }
+
+        .card-back {
+            background-color: var(--card-back);
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .card-front {
+            background-color: white;
+            transform: rotateY(180deg);
+            border: 2px solid #ddd;
+        }
+
+        .russian-text { color: var(--primary); font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-reset { background-color: #6c757d; color: white; }
+        .btn-solve { background-color: #28a745; color: white; }
+
+        #win-msg {
+            margin-top: 20px;
+            font-size: 1.3rem;
+            color: #28a745;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Найди пары</h1>
+    <p class="desc">Finde die russischen Begriffe und ihre deutschen Übersetzungen. Korrekte Paare verschwinden im Spiel.</p>
+
+    <div class="memory-grid" id="grid"></div>
+
+    <div id="win-msg">Отлично! Всё правильно! 🎉</div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="initGame()">Neu starten</button>
+        <button class="btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const vocabulary = [
+            { id: 1, ru: "умный", de: "klug", color: "var(--c1)" },
+            { id: 2, ru: "серьезный", de: "ernst", color: "var(--c2)" },
+            { id: 3, ru: "ответственный", de: "verantwortungs- bewusst", color: "var(--c3)" },
+            { id: 4, ru: "позитивный", de: "positiv", color: "var(--c4)" },
+            { id: 5, ru: "открытый", de: "offen", color: "var(--c5)" },
+            { id: 6, ru: "веселый", de: "fröhlich", color: "var(--c6)" },
+            { id: 7, ru: "путешествовать", de: "reisen", color: "var(--c7)" },
+            { id: 8, ru: "свободное время", de: "Freizeit", color: "var(--c8)" }
+        ];
+
+        let flippedCards = [];
+        let canClick = true;
+        let matchedCount = 0;
+
+        function shuffle(arr) {
+            return arr.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            document.getElementById('win-msg').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'inline-block';
+            flippedCards = [];
+            canClick = true;
+            matchedCount = 0;
+
+            let cardData = [];
+            vocabulary.forEach(v => {
+                cardData.push({ id: v.id, text: v.ru, type: 'ru' });
+                cardData.push({ id: v.id, text: v.de, type: 'de' });
+            });
+
+            shuffle(cardData).forEach(data => {
+                const card = document.createElement('div');
+                card.className = 'memory-card';
+                card.dataset.id = data.id;
+
+                card.innerHTML = `
+                    <div class="card-face card-back">?</div>
+                    <div class="card-face card-front ${data.type === 'ru' ? 'russian-text' : ''}">
+                        ${data.text}
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    if (!canClick || card.classList.contains('flipped') || card.classList.contains('matched-hidden')) return;
+                    card.classList.add('flipped');
+                    flippedCards.push(card);
+
+                    if (flippedCards.length === 2) {
+                        canClick = false;
+                        checkMatch();
+                    }
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        function checkMatch() {
+            const [c1, c2] = flippedCards;
+            if (c1.dataset.id === c2.dataset.id) {
+                matchedCount++;
+                setTimeout(() => {
+                    c1.classList.add('matched-hidden');
+                    c2.classList.add('matched-hidden');
+                    flippedCards = [];
+                    canClick = true;
+                    if (matchedCount === vocabulary.length) endGame();
+                }, 700);
+            } else {
+                setTimeout(() => {
+                    c1.classList.remove('flipped');
+                    c2.classList.remove('flipped');
+                    flippedCards = [];
+                    canClick = true;
+                }, 1000);
+            }
+        }
+
+        function showSolution() {
+            canClick = false;
+            const allCards = document.querySelectorAll('.memory-card');
+            
+            allCards.forEach(card => {
+                const id = card.dataset.id;
+                const pairData = vocabulary.find(v => v.id == id);
+                const frontFace = card.querySelector('.card-front');
+                
+                // Farbe des Paares setzen
+                frontFace.style.backgroundColor = pairData.color;
+                frontFace.style.borderColor = "#666";
+                
+                // Karte aufdecken und sichtbar lassen
+                card.classList.remove('matched-hidden');
+                card.classList.add('flipped');
+                card.style.opacity = "1";
+                card.style.visibility = "visible";
+            });
+
+            document.getElementById('solve-btn').style.display = 'none';
+            document.getElementById('win-msg').style.display = 'block';
+            document.getElementById('win-msg').textContent = "Lösung angezeigt";
+        }
+
+        function endGame() {
+            document.getElementById('win-msg').style.display = 'block';
+            document.getElementById('solve-btn').style.display = 'none';
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
