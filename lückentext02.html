@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Direktes Feedback Lückentext</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --primary: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --text: #2c3e50;
+            --border: #dcdde1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            max-width: 750px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        h1 { text-align: center; font-size: 1.4rem; color: var(--primary); margin-bottom: 5px; }
+        p.instruction { text-align: center; color: #666; font-size: 0.95rem; margin-bottom: 25px; }
+
+        .cloze-text {
+            font-size: 1.2rem;
+            line-height: 2.2;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        /* Dropdown Styling */
+        select {
+            font-size: 1.05rem;
+            font-family: inherit;
+            padding: 5px 25px 5px 10px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none; /* Entfernt Standard-Pfeil */
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%233498db%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            margin: 0 2px;
+        }
+
+        /* Zustände für direktes Feedback */
+        select.correct {
+            border-color: var(--success);
+            background-color: #eafaf1;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        select.incorrect {
+            border-color: var(--error);
+            background-color: #fdedec;
+            color: var(--error);
+        }
+
+        .status-bar {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-solve { background-color: var(--success); color: white; }
+        .btn-reset { background-color: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; }
+
+        @media (max-width: 600px) {
+            .cloze-text { font-size: 1.1rem; line-height: 2.5; }
+            select { margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>О моих друзьях</h1>
+        <p class="instruction">Wähle die richtigen Formen aus. Du erhältst sofort Feedback.</p>
+
+        <div class="status-bar" id="status">
+            0 von 8 Lücken korrekt
+        </div>
+
+        <div class="cloze-text" id="cloze-box">
+            Меня зовут Ира. Сегодня я научу вас, как рассказывать о вашем 
+            <select onchange="checkIndividual(this)" data-answer="друге">
+                <option value="">...</option>
+                <option value="друг">друг</option>
+                <option value="друге">друге</option>
+                <option value="друга">друга</option>
+            </select>. 
+            Его зовут Макс. Ему двадцать пять 
+            <select onchange="checkIndividual(this)" data-answer="лет">
+                <option value="">...</option>
+                <option value="год">год</option>
+                <option value="года">года</option>
+                <option value="лет">лет</option>
+            </select>. 
+            Мы познакомились в 
+            <select onchange="checkIndividual(this)" data-answer="университете">
+                <option value="">...</option>
+                <option value="университет">университет</option>
+                <option value="университете">университете</option>
+                <option value="университета">университета</option>
+            </select>. 
+            Он работает в магазине 
+            <select onchange="checkIndividual(this)" data-answer="продавцом">
+                <option value="">...</option>
+                <option value="продавец">продавец</option>
+                <option value="продавцом">продавцом</option>
+                <option value="продавца">продавца</option>
+            </select>. 
+            А это моя подруга Анжела. Она хочет стать 
+            <select onchange="checkIndividual(this)" data-answer="переводчиком">
+                <option value="">...</option>
+                <option value="переводчик">переводчик</option>
+                <option value="переводчиком">переводчиком</option>
+                <option value="переводчика">переводчика</option>
+            </select>. 
+            В свободное время она любит играть 
+            <select onchange="checkIndividual(this)" data-answer="на">
+                <option value="">...</option>
+                <option value="в">в</option>
+                <option value="на">на</option>
+                <option value="по">по</option>
+            </select> гитаре. 
+            Мы обычно гуляем 
+            <select onchange="checkIndividual(this)" data-answer="по">
+                <option value="">...</option>
+                <option value="в">в</option>
+                <option value="на">на</option>
+                <option value="по">по</option>
+            </select> парку. 
+            Анжела очень 
+            <select onchange="checkIndividual(this)" data-answer="позитивный">
+                <option value="">...</option>
+                <option value="позитивный">позитивный</option>
+                <option value="позитивная">позитивная</option>
+                <option value="позитивное">позитивное</option>
+            </select> человек.
+        </div>
+
+        <div class="controls">
+            <button class="btn-solve" onclick="showSolution()">Lösung anzeigen</button>
+            <button class="btn-reset" onclick="resetGame()">Zurücksetzen</button>
+        </div>
+    </div>
+
+    <script>
+        function checkIndividual(selectElement) {
+            const userAnswer = selectElement.value;
+            const correctAnswer = selectElement.getAttribute('data-answer');
+
+            if (userAnswer === "") {
+                selectElement.classList.remove('correct', 'incorrect');
+            } else if (userAnswer === correctAnswer) {
+                selectElement.classList.remove('incorrect');
+                selectElement.classList.add('correct');
+            } else {
+                selectElement.classList.remove('correct');
+                selectElement.classList.add('incorrect');
+            }
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const selects = document.querySelectorAll('select');
+            const total = selects.length;
+            let correct = 0;
+
+            selects.forEach(s => {
+                if (s.classList.contains('correct')) correct++;
+            });
+
+            const statusText = document.getElementById('status');
+            statusText.textContent = `${correct} von ${total} Lücken korrekt`;
+            
+            if (correct === total) {
+                statusText.textContent = "🎉 Отлично! Всё правильно!";
+                statusText.style.color = "var(--success)";
+            } else {
+                statusText.style.color = "var(--primary)";
+            }
+        }
+
+        function showSolution() {
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => {
+                select.value = select.getAttribute('data-answer');
+                select.classList.remove('incorrect');
+                select.classList.add('correct');
+            });
+            updateStatus();
+        }
+
+        function resetGame() {
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => {
+                select.value = "";
+                select.classList.remove('correct', 'incorrect');
+            });
+            updateStatus();
+        }
+    </script>
+</body>
+</html>
