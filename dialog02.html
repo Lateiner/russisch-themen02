@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Dialog ordnen</title>
+    <style>
+        :root {
+            --bg-color: #e5ddd5; /* WhatsApp-ähnlicher Hintergrund */
+            --msg-in: #ffffff;
+            --msg-out: #dcf8c6;
+            --primary: #075e54;
+            --text-dark: #2c3e50;
+            --success: #27ae60;
+            --error: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.4rem; color: var(--primary); text-align: center; margin-bottom: 5px; }
+        p.desc { text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Dialog-Bereich (Chat-Fenster) */
+        .chat-window {
+            background-color: var(--bg-color);
+            border-radius: 15px;
+            padding: 15px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .chat-bubble {
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 85%;
+            font-size: 1rem;
+            position: relative;
+            cursor: pointer;
+            animation: popIn 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            line-height: 1.4;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Abwechselnde Farben für Frage/Antwort Optik */
+        .chat-bubble:nth-child(odd) {
+            align-self: flex-start;
+            background-color: var(--msg-in);
+        }
+
+        .chat-bubble:nth-child(even) {
+            align-self: flex-end;
+            background-color: var(--msg-out);
+        }
+
+        /* Wort-Pool */
+        .sentence-pool {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .pool-item {
+            background: #f0f2f5;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .pool-item:hover { background: #e4e6e9; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-solve { background: var(--success); color: white; }
+
+        #feedback {
+            text-align: center;
+            font-weight: bold;
+            height: 25px;
+            margin-bottom: 5px;
+        }
+
+        .correct-dialog {
+            border: 3px solid var(--success);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Восстановите диалог</h1>
+    <p class="desc">Bringe den Dialog in die richtige Reihenfolge. Klicke die Sätze an.</p>
+
+    <div class="game-container">
+        <div id="feedback"></div>
+        
+        <div class="chat-window" id="chat-window">
+            <!-- Hier erscheinen die gewählten Sätze -->
+        </div>
+
+        <div class="sentence-pool" id="pool">
+            <!-- Hier liegen die durcheinandergewürfelten Sätze -->
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="initGame()">Neu starten</button>
+            <button class="btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+        </div>
+    </div>
+
+    <script>
+        const dialogue = [
+            { id: 0, text: "Привет! Как зовут твоего друга?" },
+            { id: 1, text: "Привет! Моего друга зовут Макс." },
+            { id: 2, text: "Сколько ему лет?" },
+            { id: 3, text: "Ему двадцать пять лет." },
+            { id: 4, text: "Где он живёт?" },
+            { id: 5, text: "Он живёт в Москве." },
+            { id: 6, text: "Он работает или учится?" },
+            { id: 7, text: "Он работает в магазине продавцом." }
+        ];
+
+        let userOrder = [];
+
+        function shuffle(arr) {
+            return arr.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const pool = document.getElementById('pool');
+            const chat = document.getElementById('chat-window');
+            const feedback = document.getElementById('feedback');
+            const solveBtn = document.getElementById('solve-btn');
+            
+            pool.innerHTML = '';
+            chat.innerHTML = '';
+            chat.classList.remove('correct-dialog');
+            feedback.textContent = '';
+            solveBtn.style.display = 'inline-block';
+            userOrder = [];
+
+            const shuffled = shuffle([...dialogue]);
+
+            shuffled.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'pool-item';
+                div.textContent = item.text;
+                div.dataset.id = item.id;
+                div.onclick = () => moveToChat(item, div);
+                pool.appendChild(div);
+            });
+        }
+
+        function moveToChat(item, poolElement) {
+            if (poolElement.style.display === 'none') return;
+            
+            userOrder.push(item.id);
+            poolElement.style.display = 'none';
+
+            const chat = document.getElementById('chat-window');
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            bubble.textContent = item.text;
+            bubble.onclick = () => removeFromChat(item, poolElement, bubble);
+            chat.appendChild(bubble);
+            
+            // Automatisch nach unten scrollen
+            chat.scrollTop = chat.scrollHeight;
+
+            checkResult();
+        }
+
+        function removeFromChat(item, poolElement, bubbleElement) {
+            userOrder = userOrder.filter(id => id !== item.id);
+            bubbleElement.remove();
+            poolElement.style.display = 'block';
+            checkResult();
+        }
+
+        function checkResult() {
+            const feedback = document.getElementById('feedback');
+            const chat = document.getElementById('chat-window');
+
+            if (userOrder.length === dialogue.length) {
+                const isCorrect = userOrder.every((id, index) => id === index);
+                
+                if (isCorrect) {
+                    feedback.textContent = "Правильно! (Richtig!)";
+                    feedback.style.color = "var(--success)";
+                    chat.classList.add('correct-dialog');
+                    document.getElementById('solve-btn').style.display = 'none';
+                    // Deaktiviere Klicks auf Sprechblasen
+                    document.querySelectorAll('.chat-bubble').forEach(b => b.onclick = null);
+                } else {
+                    feedback.textContent = "Попробуйте ещё раз! (Reihenfolge prüfen)";
+                    feedback.style.color = "var(--error)";
+                }
+            } else {
+                feedback.textContent = "";
+            }
+        }
+
+        function showSolution() {
+            const chat = document.getElementById('chat-window');
+            const pool = document.getElementById('pool');
+            chat.innerHTML = '';
+            pool.innerHTML = '';
+            userOrder = [];
+
+            dialogue.forEach(item => {
+                userOrder.push(item.id);
+                const bubble = document.createElement('div');
+                bubble.className = 'chat-bubble';
+                bubble.textContent = item.text;
+                chat.appendChild(bubble);
+            });
+
+            checkResult();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
