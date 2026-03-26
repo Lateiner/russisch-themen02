@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Sammelspiel</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --primary: #3498db;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text-dark: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 { text-align: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 10px; }
+        .mission {
+            background: #eef6ff;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 25px;
+            border: 2px solid var(--primary);
+        }
+
+        .text-content {
+            font-size: 1.3rem;
+            line-height: 2.2;
+            text-align: justify;
+            margin-bottom: 30px;
+        }
+
+        /* Wörter, die keine Kacheln sind */
+        .plain-text {
+            padding: 5px 2px;
+        }
+
+        /* Interaktive Wort-Kacheln */
+        .word-token {
+            display: inline-block;
+            padding: 2px 8px;
+            margin: 0 2px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.4;
+        }
+
+        .word-token:hover {
+            border-color: var(--primary);
+        }
+
+        /* Zustände */
+        .word-token.correct {
+            background-color: var(--success) !important;
+            color: white !important;
+            border-color: var(--success) !important;
+        }
+
+        .word-token.incorrect {
+            background-color: var(--error) !important;
+            color: white !important;
+            border-color: var(--error) !important;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-solve { background-color: var(--success); color: white; }
+        .btn-reset { background-color: #95a5a6; color: white; }
+
+        #final-msg {
+            text-align: center;
+            font-size: 1.4rem;
+            color: var(--success);
+            font-weight: bold;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .text-content { font-size: 1.1rem; line-height: 2.8; }
+            .container { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Грамматический квест</h1>
+        
+        <div class="mission">
+            ЗАДАНИЕ: Найди все глаголы / действия (8 слов).<br>
+            (AUFGABE: Finde alle Verben / Aktivitäten.)
+        </div>
+
+        <div class="status-bar">
+            <span id="counter">Gefunden: 0 / 8</span>
+        </div>
+
+        <div class="text-content" id="text-container">
+            <!-- Der Text wird per JS generiert -->
+        </div>
+
+        <div id="final-msg">🎉 Отлично! Вы нашли все действия!</div>
+
+        <div class="controls">
+            <button class="btn-solve" onclick="showSolution()">Lösung anzeigen</button>
+            <button class="btn-reset" onclick="initGame()">Zurücksetzen</button>
+        </div>
+    </div>
+
+    <script>
+        // Definition des Textes. 'isTarget: true' markiert die gesuchten Verben.
+        const storyData = [
+            { text: "Привет!", isTarget: false },
+            { text: "Меня зовут Ира.", isTarget: false },
+            { text: "Мой друг Макс", isTarget: false },
+            { text: "работает", isTarget: true },
+            { text: "в магазине.", isTarget: false },
+            { text: "В свободное время он любит", isTarget: false },
+            { text: "спать.", isTarget: true },
+            { text: "Моя подруга Анжела", isTarget: false },
+            { text: "учится", isTarget: true },
+            { text: "в университете.", isTarget: false },
+            { text: "Она хочет", isTarget: false },
+            { text: "стать", isTarget: true },
+            { text: "переводчиком.", isTarget: false },
+            { text: "Она любит", isTarget: false },
+            { text: "путешествовать", isTarget: true },
+            { text: "и", isTarget: false },
+            { text: "играть", isTarget: true },
+            { text: "на гитаре.", isTarget: false },
+            { text: "Мы часто", isTarget: false },
+            { text: "гуляем", isTarget: true },
+            { text: "по парку и", isTarget: false },
+            { text: "смотрим", isTarget: true },
+            { text: "фильмы.", isTarget: false }
+        ];
+
+        let foundCount = 0;
+        const totalTargets = storyData.filter(item => item.isTarget).length;
+
+        function initGame() {
+            const container = document.getElementById('text-container');
+            const finalMsg = document.getElementById('final-msg');
+            container.innerHTML = '';
+            finalMsg.style.display = 'none';
+            foundCount = 0;
+            updateCounter();
+
+            storyData.forEach((item, index) => {
+                if (item.isTarget) {
+                    // Erstelle eine klickbare Kachel für Verben
+                    const span = document.createElement('span');
+                    span.className = 'word-token';
+                    span.textContent = item.text;
+                    span.onclick = () => handleWordClick(span, true);
+                    container.appendChild(span);
+                } else {
+                    // Erstelle Textabschnitte, die man ebenfalls anklicken kann (aber falsch sind)
+                    // Um es interessanter zu machen, teilen wir längere Sätze in Wörter auf
+                    const parts = item.text.split(' ');
+                    parts.forEach(part => {
+                        if (part.trim() === "") return;
+                        const span = document.createElement('span');
+                        span.className = 'word-token';
+                        span.textContent = part;
+                        span.onclick = () => handleWordClick(span, false);
+                        container.appendChild(span);
+                    });
+                }
+                // Kleiner Abstand nach jedem Element
+                container.appendChild(document.createTextNode(' '));
+            });
+        }
+
+        function handleWordClick(element, isCorrect) {
+            if (element.classList.contains('correct') || element.classList.contains('incorrect')) return;
+
+            if (isCorrect) {
+                element.classList.add('correct');
+                foundCount++;
+                updateCounter();
+                if (foundCount === totalTargets) {
+                    document.getElementById('final-msg').style.display = 'block';
+                }
+            } else {
+                element.classList.add('incorrect');
+                setTimeout(() => {
+                    element.classList.remove('incorrect');
+                }, 500);
+            }
+        }
+
+        function updateCounter() {
+            document.getElementById('counter').textContent = `Gefunden: ${foundCount} / ${totalTargets}`;
+        }
+
+        function showSolution() {
+            const tokens = document.querySelectorAll('.word-token');
+            tokens.forEach(token => {
+                // Suche das Wort in den Daten
+                const wordData = storyData.find(d => d.text.includes(token.textContent));
+                // Da wir Text gesplittet haben, prüfen wir, ob das Token ein Verb ist
+                const isActuallyVerb = ["работает", "спать", "учится", "стать", "путешествовать", "играть", "гуляем", "смотрим"].includes(token.textContent.replace(/[.,]/g, ""));
+                
+                if (isActuallyVerb) {
+                    token.classList.add('correct');
+                }
+            });
+            foundCount = totalTargets;
+            updateCounter();
+            document.getElementById('final-msg').style.display = 'block';
+        }
+
+        // Start
+        initGame();
+    </script>
+</body>
+</html>
