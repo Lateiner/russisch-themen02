@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Inhalts-Quiz</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #3498db;
+            --secondary: #95a5a6;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .quiz-card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 600px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .progress-text { font-weight: bold; color: var(--primary); }
+
+        .question-text {
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .option-prefix {
+            font-weight: bold;
+            margin-right: 15px;
+            color: var(--primary);
+        }
+
+        /* Zustände */
+        .option-btn.correct {
+            border-color: var(--success);
+            background-color: #eafaf1;
+            color: var(--success);
+        }
+
+        .option-btn.incorrect {
+            border-color: var(--error);
+            background-color: #fdedec;
+            color: var(--error);
+        }
+
+        .option-btn.disabled { pointer-events: none; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button.cmd-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-next { background: var(--primary); color: white; }
+        .btn-solve { background: var(--secondary); color: white; }
+        .btn-restart { background: var(--success); color: white; }
+
+        #result-summary {
+            text-align: center;
+            display: none;
+        }
+
+        @media (max-width: 500px) {
+            .question-text { font-size: 1.1rem; }
+            .option-btn { padding: 12px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-card" id="quiz-box">
+        <div class="quiz-header">
+            <span class="progress-text" id="progress">Frage 1 von 6</span>
+        </div>
+
+        <div id="question-area">
+            <div class="question-text" id="question">Lade Frage...</div>
+            <div class="options-container" id="options"></div>
+        </div>
+
+        <div id="result-summary">
+            <h2>🎉 Отлично! (Super!)</h2>
+            <p id="score-text"></p>
+        </div>
+
+        <div class="controls">
+            <button class="cmd-btn btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+            <button class="cmd-btn btn-next" id="next-btn" onclick="nextQuestion()" style="display:none;">Nächste Frage</button>
+            <button class="cmd-btn btn-restart" id="restart-btn" onclick="resetQuiz()" style="display:none;">Neu starten</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                q: "Где познакомились друзья?",
+                options: ["В школе", "В университете", "В магазине"],
+                correct: 1
+            },
+            {
+                q: "Сколько лет Максу?",
+                options: ["Двадцать пять", "Тридцать один", "Двадцать"],
+                correct: 0
+            },
+            {
+                q: "Кем работает Макс?",
+                options: ["Переводчиком", "Продавцом", "Учителем"],
+                correct: 1
+            },
+            {
+                q: "Что любит делать Макс в свободное время?",
+                options: ["Путешествовать", "Играть на гитаре", "Спать"],
+                correct: 2
+            },
+            {
+                q: "Кем хочет стать Анжела?",
+                options: ["Продавцом", "Переводчиком", "Врачом"],
+                correct: 1
+            },
+            {
+                q: "Где живёт Макс?",
+                options: ["В Москве", "В Лондоне", "В Берлине"],
+                correct: 0
+            }
+        ];
+
+        let currentIdx = 0;
+        let score = 0;
+        let answered = false;
+
+        function loadQuestion() {
+            const data = quizData[currentIdx];
+            document.getElementById('progress').textContent = `Frage ${currentIdx + 1} von ${quizData.length}`;
+            document.getElementById('question').textContent = data.q;
+            
+            const optionsBox = document.getElementById('options');
+            optionsBox.innerHTML = '';
+            
+            data.options.forEach((opt, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<span class="option-prefix">${String.fromCharCode(65 + index)})</span> ${opt}`;
+                btn.onclick = () => selectOption(index, btn);
+                optionsBox.appendChild(btn);
+            });
+
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'inline-block';
+            answered = false;
+        }
+
+        function selectOption(index, element) {
+            if (answered) return;
+            answered = true;
+            
+            const correctIdx = quizData[currentIdx].correct;
+            const options = document.querySelectorAll('.option-btn');
+
+            if (index === correctIdx) {
+                element.classList.add('correct');
+                score++;
+            } else {
+                element.classList.add('incorrect');
+                options[correctIdx].classList.add('correct');
+            }
+
+            options.forEach(opt => opt.classList.add('disabled'));
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('solve-btn').style.display = 'none';
+        }
+
+        function showSolution() {
+            if (answered) return;
+            answered = true;
+            
+            const correctIdx = quizData[currentIdx].correct;
+            const options = document.querySelectorAll('.option-btn');
+            
+            options[correctIdx].classList.add('correct');
+            options.forEach(opt => opt.classList.add('disabled'));
+            
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('solve-btn').style.display = 'none';
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < quizData.length) {
+                loadQuestion();
+            } else {
+                showFinalResult();
+            }
+        }
+
+        function showFinalResult() {
+            document.getElementById('question-area').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('progress').style.display = 'none';
+            
+            const summary = document.getElementById('result-summary');
+            summary.style.display = 'block';
+            document.getElementById('score-text').textContent = `Du hast ${score} von ${quizData.length} Fragen richtig beantwortet.`;
+            document.getElementById('restart-btn').style.display = 'inline-block';
+        }
+
+        function resetQuiz() {
+            currentIdx = 0;
+            score = 0;
+            document.getElementById('question-area').style.display = 'block';
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('result-summary').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'none';
+            loadQuestion();
+        }
+
+        loadQuestion();
+    </script>
+</body>
+</html>
