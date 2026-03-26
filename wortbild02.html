@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Emojis zuordnen</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --text-dark: #1c1e21;
+            --primary: #007bff;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            /* Farben für die Paare */
+            --color1: #ffadad; --color2: #ffd6a5; --color3: #fdffb6;
+            --color4: #caffbf; --color5: #9bf6ff; --color6: #a0c4ff;
+            --color7: #bdb2ff; --color8: #ffc6ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 5px; text-align: center; }
+        p { margin-bottom: 25px; text-align: center; color: #555; }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* Responsive: Stapeln auf kleinen Bildschirmen */
+        @media (max-width: 600px) {
+            .game-container {
+                gap: 10px;
+            }
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tile {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            min-height: 60px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .emoji-tile { font-size: 2.5rem; }
+        .text-tile { font-weight: 500; text-align: center; }
+
+        /* Zustände */
+        .tile.selected {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            background-color: #e7f3ff;
+        }
+
+        /* Wenn gefunden: Animiertes Verschwinden */
+        .tile.matched {
+            animation: fadeOut 0.8s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes fadeOut {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; display: none; }
+        }
+
+        /* Fehler-Animation */
+        .tile.error {
+            border-color: #ff4d4d;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .btn-reset { background-color: #6c757d; color: white; }
+        .btn-solution { background-color: #28a745; color: white; }
+        button:hover { opacity: 0.9; }
+
+        #win-message {
+            margin-top: 20px;
+            font-size: 1.5rem;
+            color: #28a745;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Чем они занимаются?</h1>
+    <p>Tippe ein Emoji und den passenden russischen Ausdruck an.</p>
+
+    <div class="game-container">
+        <div class="column" id="emoji-column"></div>
+        <div class="column" id="text-column"></div>
+    </div>
+
+    <div id="win-message">Молодцы! (Gut gemacht!)</div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="initGame()">Neu starten</button>
+        <button class="btn-solution" id="solution-btn" onclick="showSolution()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const data = [
+            { id: 1, text: "играть на гитаре", emoji: "🎸", color: "var(--color1)" },
+            { id: 2, text: "гулять по парку", emoji: "🌳", color: "var(--color2)" },
+            { id: 3, text: "работать в магазине", emoji: "🛒", color: "var(--color3)" },
+            { id: 4, text: "путешествовать", emoji: "✈️", color: "var(--color4)" },
+            { id: 5, text: "смотреть фильмы", emoji: "🎬", color: "var(--color5)" },
+            { id: 6, text: "учиться в университете", emoji: "🎓", color: "var(--color6)" },
+            { id: 7, text: "ходить в кафе", emoji: "☕", color: "var(--color7)" },
+            { id: 8, text: "спать", emoji: "😴", color: "var(--color8)" }
+        ];
+
+        let selectedEmoji = null;
+        let selectedText = null;
+        let matchesFound = 0;
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const emojiCol = document.getElementById('emoji-column');
+            const textCol = document.getElementById('text-column');
+            const winMsg = document.getElementById('win-message');
+            const solBtn = document.getElementById('solution-btn');
+            
+            emojiCol.innerHTML = '';
+            textCol.innerHTML = '';
+            winMsg.style.display = 'none';
+            solBtn.style.display = 'block';
+            selectedEmoji = null;
+            selectedText = null;
+            matchesFound = 0;
+
+            const shuffledEmojis = shuffle([...data]);
+            const shuffledTexts = shuffle([...data]);
+
+            shuffledEmojis.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'tile emoji-tile';
+                div.dataset.id = item.id;
+                div.textContent = item.emoji;
+                div.onclick = () => handleSelect(div, 'emoji');
+                emojiCol.appendChild(div);
+            });
+
+            shuffledTexts.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'tile text-tile';
+                div.dataset.id = item.id;
+                div.textContent = item.text;
+                div.onclick = () => handleSelect(div, 'text');
+                textCol.appendChild(div);
+            });
+        }
+
+        function handleSelect(element, type) {
+            if (element.classList.contains('matched')) return;
+
+            if (type === 'emoji') {
+                if (selectedEmoji) selectedEmoji.classList.remove('selected');
+                selectedEmoji = element;
+            } else {
+                if (selectedText) selectedText.classList.remove('selected');
+                selectedText = element;
+            }
+            element.classList.add('selected');
+
+            if (selectedEmoji && selectedText) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            const id1 = selectedEmoji.dataset.id;
+            const id2 = selectedText.dataset.id;
+
+            if (id1 === id2) {
+                const itemData = data.find(d => d.id == id1);
+                const color = itemData.color;
+
+                // Korrektes Paar einfärben
+                selectedEmoji.style.backgroundColor = color;
+                selectedText.style.backgroundColor = color;
+                selectedEmoji.classList.add('matched');
+                selectedText.classList.add('matched');
+                
+                matchesFound++;
+                selectedEmoji = null;
+                selectedText = null;
+
+                if (matchesFound === data.length) {
+                    setTimeout(() => {
+                        document.getElementById('win-message').style.display = 'block';
+                        document.getElementById('solution-btn').style.display = 'none';
+                    }, 800);
+                }
+            } else {
+                // Fehler
+                selectedEmoji.classList.add('error');
+                selectedText.classList.add('error');
+                const e = selectedEmoji;
+                const t = selectedText;
+                
+                setTimeout(() => {
+                    e.classList.remove('error', 'selected');
+                    t.classList.remove('error', 'selected');
+                }, 400);
+                
+                selectedEmoji = null;
+                selectedText = null;
+            }
+        }
+
+        function showSolution() {
+            // Alle Tiles finden
+            const emojiTiles = document.querySelectorAll('.emoji-tile');
+            const textTiles = document.querySelectorAll('.text-tile');
+
+            data.forEach(item => {
+                const eTile = [...emojiTiles].find(t => t.dataset.id == item.id);
+                const tTile = [...textTiles].find(t => t.dataset.id == item.id);
+
+                if (eTile && tTile && !eTile.classList.contains('matched')) {
+                    eTile.style.backgroundColor = item.color;
+                    tTile.style.backgroundColor = item.color;
+                    eTile.classList.add('matched');
+                    tTile.classList.add('matched');
+                }
+            });
+
+            setTimeout(() => {
+                document.getElementById('win-message').style.display = 'block';
+                document.getElementById('solution-btn').style.display = 'none';
+            }, 800);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
