@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Hotspot-Bild</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --success: #2ecc71;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
+        p.desc { text-align: center; color: #666; margin-bottom: 20px; max-width: 600px; font-size: 0.95rem; }
+
+        .hotspot-container {
+            position: relative;
+            max-width: 1000px;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            line-height: 0;
+        }
+
+        .main-img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Hotspot Punkt */
+        .hotspot {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: var(--primary);
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 22px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            transition: transform 0.3s, background-color 0.3s;
+            animation: pulse 2.5s infinite;
+            z-index: 10;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hotspot:hover { transform: scale(1.2); background-color: var(--success); }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+
+        /* Info-Panel */
+        .info-panel {
+            position: absolute;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 100;
+            width: 200px;
+            line-height: 1.4;
+            pointer-events: auto;
+            transform: translate(-50%, -110%);
+        }
+
+        .info-panel h3 { margin: 0 0 5px 0; color: var(--primary); font-size: 1.1rem; }
+        .info-panel p { margin: 0 0 8px 0; color: #333; font-size: 0.9rem; }
+        .info-panel .context { display: block; color: #666; font-size: 0.85rem; margin-top: 4px; border-top: 1px solid #eee; padding-top: 4px; }
+        
+        .audio-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--success);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-decoration: underline;
+        }
+
+        .controls { margin-top: 25px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-solve { background: var(--success); color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
+
+        @media (max-width: 600px) {
+            .info-panel { width: 150px; font-size: 0.8rem; padding: 8px; }
+            .hotspot { width: 28px; height: 28px; font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Изучаем лексику по картинке</h1>
+    <p class="desc">Klicke auf die Symbole im Bild, um russische Wörter und Sätze zu lernen (7 Begriffe).</p>
+
+    <div class="hotspot-container" id="container">
+        <!-- Das Bild muss im gleichen Ordner liegen -->
+        <img src="friends.jpg" class="main-img" alt="Freunde an der Universität">
+
+        <div id="hotspot-elements"></div>
+        <div id="popups"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="closeAll()">Alles schließen</button>
+        <button class="btn-solve" onclick="showAll()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const hotspotData = [
+            { ru: "Кафе", de: "das Café", phrase: "ходить в кафе", top: "20%", left: "12%" },
+            { ru: "Магазин", de: "das Geschäft", phrase: "работать в магазине", top: "24%", left: "90%" },
+            { ru: "Университет", de: "die Universität", phrase: "учиться в университете", top: "15%", left: "50%" },
+            { ru: "Гитара", de: "die Gitarre", phrase: "играть на гитаре", top: "68%", left: "26%" },
+            { ru: "Книга", de: "das Buch", phrase: "читать книгу", top: "85%", left: "78%" },
+            { ru: "Кофе", de: "der Kaffee", phrase: "пить кофе", top: "65%", left: "63%" },
+            { ru: "Друзья", de: "die Freunde", phrase: "гулять с друзьями", top: "55%", left: "42%" }
+        ];
+
+        const hotspotContainer = document.getElementById('hotspot-elements');
+        const popupsContainer = document.getElementById('popups');
+
+        hotspotData.forEach((data, index) => {
+            const hs = document.createElement('div');
+            hs.className = 'hotspot';
+            hs.style.top = data.top;
+            hs.style.left = data.left;
+            hs.textContent = '+';
+            hs.onclick = (e) => toggleInfo(e, index);
+            hotspotContainer.appendChild(hs);
+
+            const panel = document.createElement('div');
+            panel.className = 'info-panel';
+            panel.id = 'panel-' + index;
+            panel.style.top = data.top;
+            panel.style.left = data.left;
+            
+            panel.innerHTML = `
+                <h3>${data.ru}</h3>
+                <p>${data.de}</p>
+                <span class="context">Контекст: ${data.phrase}</span>
+                <div style="margin-top:8px">
+                    <div class="audio-link" onclick="playAudio('${data.phrase}')">▶ Hören</div>
+                </div>
+            `;
+            popupsContainer.appendChild(panel);
+        });
+
+        function toggleInfo(event, index) {
+            event.stopPropagation();
+            const panel = document.getElementById('panel-' + index);
+            const isVisible = panel.style.display === 'block';
+            closeAll();
+            if (!isVisible) panel.style.display = 'block';
+        }
+
+        function playAudio(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ru-RU';
+            msg.rate = 0.8;
+            
+            const voices = window.speechSynthesis.getVoices();
+            // Suche nach einer russischen männlichen Stimme
+            const maleVoice = voices.find(v => v.lang.startsWith('ru') && 
+                ['Pavel', 'Maxim', 'Yuri', 'Aleksandr'].some(name => v.name.includes(name)));
+            if (maleVoice) msg.voice = maleVoice;
+
+            window.speechSynthesis.speak(msg);
+        }
+
+        function showAll() {
+            document.querySelectorAll('.info-panel').forEach(p => p.style.display = 'block');
+        }
+
+        function closeAll() {
+            document.querySelectorAll('.info-panel').forEach(p => p.style.display = 'none');
+        }
+
+        document.getElementById('container').onclick = closeAll;
+        window.speechSynthesis.onvoiceschanged = () => {};
+    </script>
+</body>
+</html>
