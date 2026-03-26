@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Genus-Sortierung</title>
+    <style>
+        :root {
+            --bg: #f4f7f6;
+            --primary: #3498db;
+            --male-color: #2980b9;
+            --female-color: #e67e22;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
+        p.desc { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.95rem; }
+
+        /* Wort-Pool */
+        .pool {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            max-width: 700px;
+            width: 100%;
+            margin-bottom: 25px;
+            min-height: 100px;
+        }
+
+        .word-card {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .word-card.selected {
+            border-color: var(--primary);
+            background-color: #ebf5fb;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Kategorien-Container */
+        .categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        @media (max-width: 600px) {
+            .categories { grid-template-columns: 1fr; }
+        }
+
+        .drop-zone {
+            background: #fff;
+            border: 3px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 15px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .drop-zone h2 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            pointer-events: none;
+        }
+
+        .zone-male { border-color: var(--male-color); color: var(--male-color); }
+        .zone-female { border-color: var(--female-color); color: var(--female-color); }
+
+        .drop-zone.highlight {
+            background-color: #f0f4f8;
+            transform: scale(1.02);
+        }
+
+        .sorted-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .sorted-word {
+            background: #eee;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            color: #333;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-solve { background: var(--success); color: white; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .error-shake { animation: shake 0.4s; border-color: var(--error) !important; color: var(--error) !important; }
+    </style>
+</head>
+<body>
+
+    <h1>Он или она? (Männlich oder Weiblich?)</h1>
+    <p class="desc">Klicke ein Wort an und wähle dann die richtige Kategorie aus.</p>
+
+    <div class="pool" id="pool"></div>
+
+    <div class="categories">
+        <div class="drop-zone zone-male" id="male-zone" onclick="handleZoneClick('m')">
+            <h2>Мужской род (m)</h2>
+            <div class="sorted-list" id="male-list"></div>
+        </div>
+        <div class="drop-zone zone-female" id="female-zone" onclick="handleZoneClick('f')">
+            <h2>Женский род (f)</h2>
+            <div class="sorted-list" id="female-list"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="initGame()">Neu starten</button>
+        <button class="btn-solve" onclick="showSolution()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const words = [
+            { text: "умный", gender: "m" },
+            { text: "умная", gender: "f" },
+            { text: "серьезный", gender: "m" },
+            { text: "серьезная", gender: "f" },
+            { text: "позитивный", gender: "m" },
+            { text: "позитивная", gender: "f" },
+            { text: "открытый", gender: "m" },
+            { text: "открытая", gender: "f" },
+            { text: "веселый", gender: "m" },
+            { text: "веселая", gender: "f" },
+            { text: "ответственный", gender: "m" },
+            { text: "ответственная", gender: "f" }
+        ];
+
+        let selectedWordObj = null;
+        let selectedElement = null;
+
+        function shuffle(arr) {
+            return arr.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const pool = document.getElementById('pool');
+            const maleList = document.getElementById('male-list');
+            const femaleList = document.getElementById('female-list');
+            
+            pool.innerHTML = '';
+            maleList.innerHTML = '';
+            femaleList.innerHTML = '';
+            selectedWordObj = null;
+            selectedElement = null;
+
+            shuffle([...words]).forEach(obj => {
+                const div = document.createElement('div');
+                div.className = 'word-card';
+                div.textContent = obj.text;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    selectWord(obj, div);
+                };
+                pool.appendChild(div);
+            });
+        }
+
+        function selectWord(obj, el) {
+            if (selectedElement) selectedElement.classList.remove('selected');
+            selectedWordObj = obj;
+            selectedElement = el;
+            el.classList.add('selected');
+        }
+
+        function handleZoneClick(gender) {
+            if (!selectedWordObj) return;
+
+            const maleZone = document.getElementById('male-zone');
+            const femaleZone = document.getElementById('female-zone');
+            const targetZone = gender === 'm' ? maleZone : femaleZone;
+
+            if (selectedWordObj.gender === gender) {
+                // Richtig
+                const list = document.getElementById(gender === 'm' ? 'male-list' : 'female-list');
+                const sortedWord = document.createElement('div');
+                sortedWord.className = 'sorted-word';
+                sortedWord.textContent = selectedWordObj.text;
+                list.appendChild(sortedWord);
+
+                selectedElement.remove();
+                selectedWordObj = null;
+                selectedElement = null;
+            } else {
+                // Falsch
+                targetZone.classList.add('error-shake');
+                setTimeout(() => targetZone.classList.remove('error-shake'), 400);
+            }
+        }
+
+        function showSolution() {
+            const pool = document.getElementById('pool');
+            const remainingCards = pool.querySelectorAll('.word-card');
+            
+            remainingCards.forEach(card => {
+                const text = card.textContent;
+                const obj = words.find(w => w.text === text);
+                const list = document.getElementById(obj.gender === 'm' ? 'male-list' : 'female-list');
+                
+                const sortedWord = document.createElement('div');
+                sortedWord.className = 'sorted-word';
+                sortedWord.textContent = obj.text;
+                list.appendChild(sortedWord);
+                card.remove();
+            });
+            selectedWordObj = null;
+            selectedElement = null;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
