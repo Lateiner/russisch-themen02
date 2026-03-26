@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch lernen: Wer ist es?</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary: #3498db;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text-dark: #2c3e50;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 700px;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; color: var(--primary); }
+        p.instruction { color: #666; margin-bottom: 25px; }
+
+        .description-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--primary);
+            line-height: 1.4;
+        }
+
+        .profiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 550px) {
+            .profiles { grid-template-columns: 1fr; }
+        }
+
+        .profile-card {
+            background: var(--card-bg);
+            border: 3px solid #ddd;
+            border-radius: 20px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .profile-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+
+        .emoji { font-size: 4rem; display: block; margin-bottom: 10px; }
+        .name { font-size: 1.5rem; font-weight: bold; }
+
+        /* Feedback-Klassen */
+        .profile-card.correct { border-color: var(--success); background-color: #eafaf1; }
+        .profile-card.incorrect { border-color: var(--error); background-color: #fdedec; }
+        .profile-card.disabled { pointer-events: none; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-solve { background-color: #95a5a6; color: white; }
+        .btn-next { background-color: var(--primary); color: white; }
+        .btn-restart { background-color: var(--success); color: white; }
+
+        #progress { margin-bottom: 10px; font-weight: bold; color: var(--primary); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .shake { animation: shake 0.4s; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Кто это? (Wer ist das?)</h1>
+        <p class="instruction">Lies die Beschreibung und klicke auf die richtige Person.</p>
+
+        <div id="progress">Frage 1 von 8</div>
+        <div class="description-box" id="desc-text">Lade Beschreibung...</div>
+
+        <div class="profiles">
+            <div class="profile-card" id="card-max" onclick="checkAnswer('max')">
+                <span class="emoji">🧔</span>
+                <span class="name">Макс</span>
+            </div>
+            <div class="profile-card" id="card-angela" onclick="checkAnswer('angela')">
+                <span class="emoji">👩</span>
+                <span class="name">Анжела</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+            <button class="btn-next" id="next-btn" style="display:none;" onclick="nextQuestion()">Nächste Frage</button>
+            <button class="btn-restart" id="restart-btn" style="display:none;" onclick="initGame()">Neu starten</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            { text: "Этот человек работает в магазине продавцом.", target: "max" },
+            { text: "Этот человек учится в университете и хочет стать переводчиком.", target: "angela" },
+            { text: "Ей тридцать один год.", target: "angela" },
+            { text: "Ему двадцать пять лет.", target: "max" },
+            { text: "В свободное время этот человек любит спать.", target: "max" },
+            { text: "Этот человек любит путешествовать и играть на гитаре.", target: "angela" },
+            { text: "Это позитивный, открытый и весёлый человек.", target: "angela" },
+            { text: "Это умный, серьезный и ответственный человек.", target: "max" }
+        ];
+
+        let currentIdx = 0;
+        let answered = false;
+
+        function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+
+        function initGame() {
+            shuffle(questions);
+            currentIdx = 0;
+            document.querySelector('.profiles').style.display = 'grid';
+            document.getElementById('restart-btn').style.display = 'none';
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            answered = false;
+            const q = questions[currentIdx];
+            document.getElementById('desc-text').textContent = q.text;
+            document.getElementById('progress').textContent = `Frage ${currentIdx + 1} von ${questions.length}`;
+            
+            const cards = document.querySelectorAll('.profile-card');
+            cards.forEach(c => {
+                c.className = 'profile-card';
+                c.style.opacity = '1';
+            });
+
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'inline-block';
+        }
+
+        function checkAnswer(choice) {
+            if (answered) return;
+            const q = questions[currentIdx];
+            const selectedCard = document.getElementById('card-' + choice);
+            const otherCard = document.getElementById('card-' + (choice === 'max' ? 'angela' : 'max'));
+
+            if (choice === q.target) {
+                selectedCard.classList.add('correct');
+                otherCard.style.opacity = '0.5';
+                completeQuestion();
+            } else {
+                selectedCard.classList.add('incorrect');
+                selectedCard.classList.add('shake');
+                setTimeout(() => selectedCard.classList.remove('shake'), 400);
+            }
+        }
+
+        function showSolution() {
+            if (answered) return;
+            const q = questions[currentIdx];
+            document.getElementById('card-' + q.target).classList.add('correct');
+            document.getElementById('card-' + (q.target === 'max' ? 'angela' : 'max')).style.opacity = '0.5';
+            completeQuestion();
+        }
+
+        function completeQuestion() {
+            answered = true;
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.add('disabled'));
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('solve-btn').style.display = 'none';
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < questions.length) {
+                loadQuestion();
+            } else {
+                showEnd();
+            }
+        }
+
+        function showEnd() {
+            document.getElementById('desc-text').textContent = "Молодцы! Вы всех узнали! 🎉";
+            document.querySelector('.profiles').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('solve-btn').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'inline-block';
+            document.getElementById('progress').textContent = "Fertig!";
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
