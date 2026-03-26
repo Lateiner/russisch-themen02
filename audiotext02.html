@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch Hörverstehen: Männliche Stimme</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --primary: #4a90e2;
+            --success: #28a745;
+            --error: #dc3545;
+            --text-main: #333;
+            /* Farben für Paare */
+            --c1: #ffadad; --c2: #ffd6a5; --c3: #fdffb6; --c4: #caffbf;
+            --c5: #9bf6ff; --c6: #a0c4ff; --c7: #bdb2ff; --c8: #ffc6ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { text-align: center; margin-bottom: 5px; font-size: 1.5rem; }
+        p.desc { text-align: center; margin-bottom: 20px; color: #666; max-width: 600px; }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        @media (max-width: 500px) {
+            .game-grid { gap: 10px; }
+            .tile { padding: 12px !important; font-size: 1rem !important; }
+            .audio-btn { font-size: 1.8rem !important; }
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tile {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .audio-btn {
+            font-size: 2.2rem;
+            background: #fff;
+            color: var(--primary);
+        }
+
+        .text-tile {
+            font-size: 1.1rem;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .tile.selected {
+            border-color: var(--primary);
+            background-color: #eef6ff;
+            transform: scale(1.02);
+        }
+
+        .tile.matched {
+            animation: matchEffect 0.8s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes matchEffect {
+            0% { transform: scale(1); opacity: 1; }
+            40% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; visibility: hidden; }
+        }
+
+        .tile.error {
+            border-color: var(--error);
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button.cmd {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-reset { background: #6c757d; color: white; }
+        .btn-solve { background: var(--success); color: white; }
+
+        #win-msg {
+            margin-top: 20px;
+            font-size: 1.4rem;
+            color: var(--success);
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Слушаем и выбираем</h1>
+    <p class="desc">Höre dir die Sätze (männliche Stimme) an und klicke auf den passenden russischen Text.</p>
+
+    <div class="game-grid">
+        <div class="column" id="audio-col"></div>
+        <div class="column" id="text-col"></div>
+    </div>
+
+    <div id="win-msg">Отлично! (Hervorragend!)</div>
+
+    <div class="controls">
+        <button class="cmd btn-reset" onclick="initGame()">Neu starten</button>
+        <button class="cmd btn-solve" id="solve-btn" onclick="showSolution()">Lösung anzeigen</button>
+    </div>
+
+    <script>
+        const sentences = [
+            { id: 1, text: "Его зовут Макс.", color: "var(--c1)" },
+            { id: 2, text: "Ему двадцать пять лет.", color: "var(--c2)" },
+            { id: 3, text: "Мы познакомились в университете.", color: "var(--c3)" },
+            { id: 4, text: "Он работает в магазине продавцом.", color: "var(--c4)" },
+            { id: 5, text: "Он живет в Москве.", color: "var(--c5)" },
+            { id: 6, text: "В свободное время он любит спать.", color: "var(--c6)" },
+            { id: 7, text: "Мы обычно гуляем по парку.", color: "var(--c7)" },
+            { id: 8, text: "Он умный и серьезный человек.", color: "var(--c8)" }
+        ];
+
+        let selectedAudio = null;
+        let selectedText = null;
+        let matchesFound = 0;
+        let maleVoice = null;
+
+        // Funktion zum Finden einer männlichen russischen Stimme
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            // Suche nach russischen Stimmen mit männlichen Namen
+            const maleNames = ['Pavel', 'Maxim', 'Yuri', 'Yury', 'Dmitry', 'Aleksandr'];
+            maleVoice = voices.find(v => v.lang.startsWith('ru') && maleNames.some(name => v.name.includes(name)));
+            
+            // Fallback: Erste verfügbare russische Stimme
+            if (!maleVoice) {
+                maleVoice = voices.find(v => v.lang.startsWith('ru'));
+            }
+        }
+
+        // Stimmen laden (asynchroner Prozess im Browser)
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        function playAudio(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = text;
+            if (maleVoice) msg.voice = maleVoice;
+            msg.lang = 'ru-RU';
+            msg.rate = 0.85; 
+            window.speechSynthesis.speak(msg);
+        }
+
+        function shuffle(arr) {
+            return arr.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const audioCol = document.getElementById('audio-col');
+            const textCol = document.getElementById('text-col');
+            const winMsg = document.getElementById('win-msg');
+            const solveBtn = document.getElementById('solve-btn');
+
+            audioCol.innerHTML = '';
+            textCol.innerHTML = '';
+            winMsg.style.display = 'none';
+            solveBtn.style.display = 'inline-block';
+            matchesFound = 0;
+            selectedAudio = null;
+            selectedText = null;
+
+            const shuffledAudio = shuffle([...sentences]);
+            const shuffledText = shuffle([...sentences]);
+
+            shuffledAudio.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'tile audio-btn';
+                div.dataset.id = item.id;
+                div.innerHTML = '🔊';
+                div.onclick = () => {
+                    playAudio(item.text);
+                    handleSelect(div, 'audio');
+                };
+                audioCol.appendChild(div);
+            });
+
+            shuffledText.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'tile text-tile';
+                div.dataset.id = item.id;
+                div.textContent = item.text;
+                div.onclick = () => handleSelect(div, 'text');
+                textCol.appendChild(div);
+            });
+        }
+
+        function handleSelect(el, type) {
+            if (el.classList.contains('matched')) return;
+
+            if (type === 'audio') {
+                if (selectedAudio) selectedAudio.classList.remove('selected');
+                selectedAudio = el;
+            } else {
+                if (selectedText) selectedText.classList.remove('selected');
+                selectedText = el;
+            }
+            el.classList.add('selected');
+
+            if (selectedAudio && selectedText) {
+                if (selectedAudio.dataset.id === selectedText.dataset.id) {
+                    const id = selectedAudio.dataset.id;
+                    const color = sentences.find(s => s.id == id).color;
+                    
+                    selectedAudio.style.backgroundColor = color;
+                    selectedText.style.backgroundColor = color;
+                    selectedAudio.classList.add('matched');
+                    selectedText.classList.add('matched');
+                    
+                    matchesFound++;
+                    selectedAudio = null;
+                    selectedText = null;
+
+                    if (matchesFound === sentences.length) {
+                        setTimeout(() => {
+                            document.getElementById('win-msg').style.display = 'block';
+                            document.getElementById('solve-btn').style.display = 'none';
+                        }, 800);
+                    }
+                } else {
+                    const a = selectedAudio;
+                    const t = selectedText;
+                    a.classList.add('error');
+                    t.classList.add('error');
+                    setTimeout(() => {
+                        a.classList.remove('error', 'selected');
+                        t.classList.remove('error', 'selected');
+                    }, 400);
+                    selectedAudio = null;
+                    selectedText = null;
+                }
+            }
+        }
+
+        function showSolution() {
+            const aTiles = document.querySelectorAll('.audio-btn');
+            const tTiles = document.querySelectorAll('.text-tile');
+
+            sentences.forEach(s => {
+                const a = [...aTiles].find(t => t.dataset.id == s.id);
+                const t = [...tTiles].find(t => t.dataset.id == s.id);
+                if (a && t && !a.classList.contains('matched')) {
+                    a.style.backgroundColor = s.color;
+                    t.style.backgroundColor = s.color;
+                    a.classList.add('matched');
+                    t.classList.add('matched');
+                }
+            });
+            setTimeout(() => {
+                document.getElementById('win-msg').style.display = 'block';
+                document.getElementById('solve-btn').style.display = 'none';
+            }, 800);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
